@@ -18,7 +18,10 @@ jobs:
         go-version: 1.22
 
     - name: Build 
-      run: go build -o product-catalog-service src/product-catalog/main.go
+      run: 
+        cd src/product-catalog
+        go mod download
+        go build -o product-catalog-service src/product-catalog/main.go
     
     - name: Unit tests
       run: go test -v src/product-catalog/...
@@ -64,4 +67,15 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        
+
+    - name: update tag in kubernetes deployment file
+      run: |
+         sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/product-catalog-service:${{github.run_id}}|g" kubernetes/productcatalog/deploy.yaml 
+
+    - name: Commit and push changes
+      run: |
+        git config --global user.name "saikishore789"
+        git config --global user.email "saikishorereddy789@gmail.com"
+        git add kubernetes/productcatalog/deploy.yaml
+        git commit -m "Update Docker image tag to ${{ secrets.DOCKER_USERNAME }}/product-catalog-service:${{github.run_id}}" || echo "No changes to commit"
+        git push origin HEAD:main
